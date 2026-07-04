@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Dashboard Completo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+        .container { display: flex; height: 100vh; }
+        .sidebar { width: 280px; background: #1F4E78; color: white; padding: 20px; overflow-y: auto; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+        .sidebar h1 { font-size: 18px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #2E75B6; }
+        .nav-section { margin-bottom: 15px; }
+        .nav-section-title { font-size: 11px; text-transform: uppercase; color: #BDD7EE; margin-bottom: 8px; font-weight: 600; }
+        .nav-item { padding: 10px 12px; margin: 4px 0; border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 13px; }
+        .nav-item:hover { background: #2E75B6; }
+        .nav-item.active { background: #4472C4; font-weight: 600; border-left: 3px solid #FFD966; }
+        .main { flex: 1; display: flex; flex-direction: column; }
+        .header { background: white; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .header h2 { color: #1F4E78; font-size: 24px; }
+        .header-actions { display: flex; gap: 10px; }
+        button { padding: 8px 16px; background: #4472C4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; transition: background 0.2s; }
+        button:hover { background: #2E75B6; }
+        button.secondary { background: #70AD47; }
+        button.secondary:hover { background: #548235; }
+        .content { flex: 1; overflow-y: auto; padding: 20px; }
+        .section { display: none; }
+        .section.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .section-title { color: #1F4E78; font-size: 20px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #BDD7EE; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card h3 { color: #1F4E78; margin-bottom: 15px; font-size: 14px; font-weight: 600; }
+        .card h4 { color: #1F4E78; margin: 15px 0 10px 0; font-size: 13px; border-bottom: 1px solid #BDD7EE; padding-bottom: 5px; }
+        .metric { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; border-bottom: 1px solid #E7E6E6; }
+        .metric:last-child { border-bottom: none; }
+        .metric-label { color: #666; }
+        .metric-value { font-weight: 600; color: #1F4E78; }
+        .holding { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; margin-left: 10px; }
+        .total-bar { background: #BDD7EE; padding: 8px 10px; margin-top: 8px; border-radius: 3px; font-size: 13px; font-weight: 600; }
+        .chart-container { position: relative; height: 280px; margin-bottom: 20px; }
+        .subsection-title { background: #2E75B6; color: white; padding: 10px 15px; border-radius: 4px; margin-bottom: 12px; font-size: 13px; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 15px; background: white; }
+        th { background: #D9E1F2; padding: 8px; text-align: left; font-weight: 600; color: #1F4E78; border-bottom: 2px solid #2E75B6; }
+        td { padding: 6px 8px; border-bottom: 1px solid #E7E6E6; }
+        tr:hover { background: #F9F9F9; }
+        .input-row { background: #F2F2F2; }
+        .total-row { background: #BDD7EE; font-weight: 600; }
+        input[type="number"], input[type="text"], select { width: 100%; padding: 6px 8px; border: 1px solid #BDD7EE; border-radius: 3px; font-size: 12px; }
+        input:focus, select:focus { outline: none; border-color: #4472C4; box-shadow: 0 0 0 2px rgba(68, 114, 196, 0.1); }
+        .add-btn { width: 100%; margin-top: 10px; }
+        .delete-btn { background: #C5504B; padding: 4px 8px; font-size: 11px; width: auto; }
+        .delete-btn:hover { background: #A03E39; }
+        .label-group { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .label-group label { font-weight: 600; color: #1F4E78; font-size: 13px; }
+        .label-group input { margin: 0; }
+        .forecast-table { background: white; }
+        .info-box { background: #FFF9E6; padding: 15px; border-left: 4px solid #FFD966; border-radius: 4px; margin-bottom: 15px; font-size: 13px; color: #666; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>💼 Financial</h1>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Dashboard</div>
+                <div class="nav-item active" onclick="showSection('dashboard')">📊 Riepilogo</div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Operativo</div>
+                <div class="nav-item" onclick="showSection('monthly')">📅 Spese Mensili</div>
+                <div class="nav-item" onclick="showSection('rendiconto')">📋 Rendiconti</div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Investimenti</div>
+                <div class="nav-item" onclick="showSection('investments')">💰 Dettaglio</div>
+                <div class="nav-item" onclick="showSection('forecast')">📈 Forecast</div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-title">Tasse</div>
+                <div class="nav-item" onclick="showSection('taxes')">🏦 Tasse</div>
+            </div>
+
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #2E75B6;">
+                <button onclick="exportData()" style="width: 100%; margin-bottom: 8px; background: #70AD47;">💾 Export</button>
+                <button onclick="importDataModal()" style="width: 100%; background: #4472C4;">📤 Import</button>
+            </div>
+        </div>
+
+        <div class="main">
+            <div class="header">
+                <h2 id="pageTitle">Riepilogo Generale</h2>
+                <div class="header-actions">
+                    <span id="last-update" style="color: #666; font-size: 13px;"></span>
+                </div>
+            </div>
+
+            <div class="content">
+                <!-- DASHBOARD RIEPILOGO -->
+                <div class="section active" id="dashboard">
+                    <div class="section-title">Riepilogo Finanziario Completo</div>
+
+                    <div class="grid">
+                        <div class="card">
+                            <h3>💰 Patrimonio Investimenti</h3>
+                            <div class="metric">
+                                <span class="metric-label">Italia (BCC + Revolut)</span>
+                                <span class="metric-value">€149,560.85</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Svizzera (VIAC + SAXO)</span>
+                                <span class="metric-value">CHF 5,281.89</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Svizzera in EUR @ 0.957</span>
+                                <span class="metric-value">€5,054.77</span>
+                            </div>
+                            <div class="total-bar" style="border-top: 2px solid #2E75B6; padding-top: 10px; margin-top: 10px;">
+                                TOTALE: €154,615.62
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3>💸 Flusso Cassa Proprietà</h3>
+                            <div class="metric">
+                                <span class="metric-label">Reddito affitto annuale</span>
+                                <span class="metric-value">€14,400</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Spese totali annuali</span>
+                                <span class="metric-value">€13,602</span>
+                            </div>
+                            <div class="metric" style="border-top: 2px solid #2E75B6; padding-top: 10px; margin-top: 10px;">
+                                <span class="metric-label" style="font-weight: 600;">NETTO ANNUALE</span>
+                                <span class="metric-value" style="color: #70AD47; font-weight: 600;">€798</span>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3>💱 Tassi & Impostazioni</h3>
+                            <div class="label-group">
+                                <label>EUR/CHF:</label>
+                                <input type="number" id="fx-rate" value="0.957" step="0.001" onchange="recalculateAll()">
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Mutuo mensile</span>
+                                <span class="metric-value">€678</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SPESE MENSILI -->
+                <div class="section" id="monthly">
+                    <div class="section-title">Spese Mensili - Registrazione</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mese</th>
+                                <th>Paese</th>
+                                <th>Entrate</th>
+                                <th>Bollette+Mutuo</th>
+                                <th>Vita Quotidiana</th>
+                                <th>Salute</th>
+                                <th>Investimenti</th>
+                                <th>Uscite</th>
+                                <th>Netto</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthlyList"></tbody>
+                    </table>
+                    <button class="add-btn" onclick="addMonthlyRow()">+ Aggiungi Mese</button>
+                </div>
+
+                <!-- INVESTIMENTI DETTAGLIO -->
+                <div class="section" id="investments">
+                    <div class="section-title">Investimenti - Breakdown Dettagliato (€154,615.62)</div>
+
+                    <div class="card">
+                        <h3>🇮🇹 ITALIA - BCC (€144,402.98)</h3>
+                        <h4>Certificati (€34,920.59 - 24.2%)</h4>
+                        <div class="holding">
+                            <span>BPER BCA (10 × €1,007.59)</span>
+                            <span style="color: #1F4E78; font-weight: 600;">€10,070.59</span>
+                        </div>
+                        <div class="holding">
+                            <span>DX 13/25 (28 × €994)</span>
+                            <span style="color: #1F4E78; font-weight: 600;">€27,832.00</span>
+                        </div>
+                        <div class="holding">
+                            <span>BPER CALL CERT (25 × €994)</span>
+                            <span style="color: #1F4E78; font-weight: 600;">€24,850.00</span>
+                        </div>
+                        <div class="total-bar">Certificati: €62,752.59</div>
+
+                        <h4 style="margin-top: 15px;">Obbligazioni & BTP (€34,162.54 - 23.6%)</h4>
+                        <div class="holding">
+                            <span>BOT 29/05/2026</span>
+                            <span style="color: #1F4E78; font-weight: 600;">€4,956.14</span>
+                        </div>
+                        <div class="holding">
+                            <span>BTP 2.50% 22/01/2032</span>
+                            <span style="color: #1F4E78; font-weight: 600;">€19,224.85</span>
+                        </div>
+                        <div class="holding">
+                            <span>BTP TF 2.95% 01/07/2030</span>
+                            <span style="color: #1F4E78; font-weight: 600;">€5,007.00</span>
+                        </div>
+                        <div class="holding">
+                            <span>BTP Valore 28/10/2032</span>
+                            <span style="color: #1F4E78; font-weight: 600;">€4,974.55</span>
+                        </div>
+                        <div class="total-bar">Obbligazioni: €34,162.54</div>
+
+                        <h4 style="margin-top: 15px;">GPM - Robo 2 (€52,600.00 - 36.4%)</h4>
+                        <div class="total-bar">GPM Robo 2: €52,600.00</div>
+
+                        <h4 style="margin-top: 15px;">Fondi & Sicav (€26,340.21 - 18.2%)</h4>
+                        <div class="holding"><span>ARCA Cedola Attiva Plus 2027</span><span style="color: #1F4E78; font-weight: 600;">€5,147.29</span></div>
+                        <div class="holding"><span>ARCA D Attiva 2028</span><span style="color: #1F4E78; font-weight: 600;">€5,781.95</span></div>
+                        <div class="holding"><span>BSF Impact World Equity E2</span><span style="color: #1F4E78; font-weight: 600;">€4,708.18</span></div>
+                        <div class="holding"><span>FF Global Technology E</span><span style="color: #1F4E78; font-weight: 600;">€4,738.03</span></div>
+                        <div class="holding"><span>JPMF Global Focus D</span><span style="color: #1F4E78; font-weight: 600;">€4,357.38</span></div>
+                        <div class="holding"><span>Raiffeisen Obbligazionario Europa</span><span style="color: #1F4E78; font-weight: 600;">€2,003.49</span></div>
+                        <div class="holding"><span>SISF Euro Corporate Bond B</span><span style="color: #1F4E78; font-weight: 600;">€4,122.31</span></div>
+                        <div class="holding"><span>JPM Global Dividend D (USD)</span><span style="color: #1F4E78; font-weight: 600;">€453.86</span></div>
+                        <div class="total-bar">Fondi: €26,340.21</div>
+
+                        <div class="total-bar" style="background: #4472C4; color: white; margin-top: 15px; font-size: 15px;">
+                            TOTALE BCC: €144,402.98
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h3>🇮🇹 ITALIA - Revolut ($5,672.66 ≈ €5,157.87)</h3>
+                        <div class="holding">
+                            <span>iShares Core MSCI Emerging Markets (36.22 × $47.83)</span>
+                            <span style="color: #1F4E78; font-weight: 600;">$1,732.68</span>
+                        </div>
+                        <div class="holding">
+                            <span>iShares S&P 500 EUR-Hedged (8.30 × $153.71)</span>
+                            <span style="color: #1F4E78; font-weight: 600;">$1,275.79</span>
+                        </div>
+                        <div class="holding">
+                            <span>iShares Core MSCI World (8.86 × $125.30)</span>
+                            <span style="color: #1F4E78; font-weight: 600;">$1,110.91</span>
+                        </div>
+                        <div class="holding">
+                            <span>Microsoft (2.37 × $384.80)</span>
+                            <span style="color: #1F4E78; font-weight: 600;">$913.18</span>
+                        </div>
+                        <div class="holding">
+                            <span>iShares Automation & Robotics (5.78 × $12.56)</span>
+                            <span style="color: #1F4E78; font-weight: 600;">$72.59</span>
+                        </div>
+                        <div class="total-bar" style="background: #4472C4; color: white; margin-top: 15px; font-size: 15px;">
+                            TOTALE REVOLUT: $5,672.66 (€5,157.87 @ 1.10)
+                        </div>
+                    </div>
+
+                    <div class="grid" style="margin-top: 20px;">
+                        <div class="card">
+                            <h3>🇨🇭 SVIZZERA - VIAC 3a (CHF 2,281.89)</h3>
+                            <div class="holding">
+                                <span>Liquidity (44%)</span>
+                                <span style="color: #1F4E78; font-weight: 600;">CHF 1,011.90</span>
+                            </div>
+                            <div class="holding">
+                                <span>Equities (34%)</span>
+                                <span style="color: #1F4E78; font-weight: 600;">CHF 778.59</span>
+                            </div>
+                            <div class="holding">
+                                <span>Bonds (14%)</span>
+                                <span style="color: #1F4E78; font-weight: 600;">CHF 316.52</span>
+                            </div>
+                            <div class="holding">
+                                <span>Real estate (6%)</span>
+                                <span style="color: #1F4E78; font-weight: 600;">CHF 128.90</span>
+                            </div>
+                            <div class="holding">
+                                <span>Commodities (2%)</span>
+                                <span style="color: #1F4E78; font-weight: 600;">CHF 45.98</span>
+                            </div>
+                            <div class="total-bar" style="background: #4472C4; color: white;">
+                                VIAC: CHF 2,281.89
+                            </div>
+                            <div class="info-box" style="margin-top: 10px;">
+                                📌 Contributo: €1,000/mese fino dic 2026
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3>🇨🇭 SVIZZERA - SAXO (CHF 3,000.00)</h3>
+                            <div class="holding">
+                                <span>iShares Core MSCI World UCITS ETF</span>
+                                <span style="color: #1F4E78; font-weight: 600;">CHF 1,285.92</span>
+                            </div>
+                            <div class="holding">
+                                <span>iShares MSCI Emerging Markets UCITS ETF</span>
+                                <span style="color: #1F4E78; font-weight: 600;">CHF 524.80</span>
+                            </div>
+                            <div class="holding">
+                                <span>Liquidità & Riserva</span>
+                                <span style="color: #1F4E78; font-weight: 600;">CHF 1,189.28</span>
+                            </div>
+                            <div class="total-bar" style="background: #4472C4; color: white;">
+                                SAXO: CHF 3,000.00
+                            </div>
+                            <div class="info-box" style="margin-top: 10px;">
+                                📌 Contributo: €1,500/mese fissi
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FORECAST -->
+                <div class="section" id="forecast">
+                    <div class="section-title">Forecast Investimenti - Base CAGR 4% Italia, 3% Svizzera</div>
+
+                    <div class="card">
+                        <h3>Scenario Ipotesi</h3>
+                        <div class="info-box">
+                            <strong>Parametri:</strong><br>
+                            • Italia (portfolio statico): CAGR 4%/anno<br>
+                            • Svizzera VIAC: €1,000/mese fino dic 2026, poi fermo<br>
+                            • Svizzera SAXO: €1,500/mese fissi<br>
+                            • Tasso EUR/CHF: 0.957<br>
+                            • Revolut: Statico (no contributi)
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h3>ITALIA - 3 e 10 anni (4% CAGR)</h3>
+                        <table class="forecast-table">
+                            <tr><th>Periodo</th><th>Valore (€)</th><th>Crescita</th><th>Plus/Minus</th></tr>
+                            <tr><td>01/07/2026</td><td>€149,560.85</td><td>-</td><td>€0</td></tr>
+                            <tr><td>01/07/2027</td><td>€155,543.29</td><td>+4.0%</td><td>€5,982.44</td></tr>
+                            <tr><td>01/07/2028</td><td>€161,765.02</td><td>+4.0%</td><td>€12,204.17</td></tr>
+                            <tr style="background: #BDD7EE; font-weight: 600;"><td>01/07/2029</td><td>€168,235.42</td><td>+4.0%</td><td>€18,674.57</td></tr>
+                            <tr><td>2030</td><td>€174,964.84</td><td>+4.0%</td><td>€25,403.99</td></tr>
+                            <tr><td>2031</td><td>€181,963.83</td><td>+4.0%</td><td>€32,402.98</td></tr>
+                            <tr><td>2032</td><td>€189,242.38</td><td>+4.0%</td><td>€39,681.53</td></tr>
+                            <tr><td>2033</td><td>€196,811.68</td><td>+4.0%</td><td>€47,250.83</td></tr>
+                            <tr><td>2034</td><td>€204,683.35</td><td>+4.0%</td><td>€55,122.50</td></tr>
+                            <tr><td>2035</td><td>€212,870.28</td><td>+4.0%</td><td>€63,309.43</td></tr>
+                            <tr style="background: #BDD7EE; font-weight: 600;"><td>2036</td><td>€221,384.69</td><td>+4.0%</td><td>€71,823.84</td></tr>
+                        </table>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h3>SVIZZERA - 3 e 10 anni (3% CAGR)</h3>
+                        <table class="forecast-table">
+                            <tr><th>Periodo</th><th>VIAC (CHF)</th><th>SAXO (CHF)</th><th>Totale (CHF)</th><th>In EUR</th></tr>
+                            <tr><td>01/07/2026</td><td>CHF 2,281.89</td><td>CHF 3,000.00</td><td>CHF 5,281.89</td><td>€5,054.77</td></tr>
+                            <tr><td>01/07/2027</td><td>CHF 5,282.89</td><td>CHF 21,000.00</td><td>CHF 26,282.89</td><td>€25,140.45</td></tr>
+                            <tr><td>01/07/2028</td><td>CHF 8,441.87</td><td>CHF 39,285.00</td><td>CHF 47,726.87</td><td>€45,677.35</td></tr>
+                            <tr style="background: #BDD7EE; font-weight: 600;"><td>01/07/2029</td><td>CHF 8,694.72</td><td>CHF 58,923.55</td><td>CHF 67,618.27</td><td>€64,716.13</td></tr>
+                            <tr><td>2030</td><td>CHF 8,955.36</td><td>CHF 79,912.06</td><td>CHF 88,867.42</td><td>€85,016.19</td></tr>
+                            <tr><td>2035</td><td>CHF 10,345.02</td><td>CHF 178,456.82</td><td>CHF 188,801.84</td><td>€180,538.06</td></tr>
+                            <tr style="background: #BDD7EE; font-weight: 600;"><td>2036</td><td>CHF 10,655.57</td><td>CHF 214,817.67</td><td>CHF 225,473.24</td><td>€215,827.51</td></tr>
+                        </table>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px; background: #FFF9E6; border-left: 4px solid #FFD966;">
+                        <h3>Riepilogo Totale</h3>
+                        <table class="forecast-table" style="background: transparent;">
+                            <tr><th>Periodo</th><th>Italia (€)</th><th>Svizzera (€)</th><th>TOTALE (€)</th></tr>
+                            <tr><td><strong>2026 (Oggi)</strong></td><td>€149,560.85</td><td>€5,054.77</td><td><strong>€154,615.62</strong></td></tr>
+                            <tr><td><strong>2029 (3 anni)</strong></td><td>€168,235.42</td><td>€64,716.13</td><td><strong>€232,951.55 (+50.7%)</strong></td></tr>
+                            <tr style="background: #BDD7EE; font-weight: 600;"><td><strong>2036 (10 anni)</strong></td><td>€221,384.69</td><td>€215,827.51</td><td><strong>€437,212.20 (+182.8%)</strong></td></tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TASSE -->
+                <div class="section" id="taxes">
+                    <div class="section-title">Tasse e Obblighi Fiscali</div>
+
+                    <div class="card">
+                        <h3>🇮🇹 Tasse Italia</h3>
+
+                        <h4>Mutuo (Spesa Annuale)</h4>
+                        <div class="label-group">
+                            <label>Mutuo mensile (€):</label>
+                            <input type="number" id="mortgage-monthly" value="678" step="0.01" onchange="recalculateAll()">
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Annuale (€)</span>
+                            <span class="metric-value" id="mortgage-annual">€8,136.00</span>
+                        </div>
+
+                        <h4 style="margin-top: 15px;">IMU (Immobile non prima casa)</h4>
+                        <table style="margin-bottom: 15px;">
+                            <thead>
+                                <tr><th>Anno</th><th>Importo (€)</th><th>Azioni</th></tr>
+                            </thead>
+                            <tbody id="imuList"></tbody>
+                        </table>
+                        <button class="add-btn" onclick="addTaxRow('imu')">+ Aggiungi IMU</button>
+
+                        <h4 style="margin-top: 15px;">F24 - Cedolare Secca</h4>
+                        <table style="margin-bottom: 15px;">
+                            <thead>
+                                <tr><th>Data</th><th>Importo (€)</th><th>Tipo</th><th>Azioni</th></tr>
+                            </thead>
+                            <tbody id="f24List"></tbody>
+                        </table>
+                        <button class="add-btn" onclick="addTaxRow('f24')">+ Aggiungi F24</button>
+
+                        <div class="total-bar">
+                            Totale Tasse Italia: <span id="total-taxes-it">€3,938.00</span>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h3>🇨🇭 Tasse Svizzera</h3>
+
+                        <div class="label-group">
+                            <label>Imposta casa Italia (CHF):</label>
+                            <input type="number" id="tax-ch-house" value="800" step="0.01" onchange="recalculateAll()">
+                        </div>
+
+                        <table style="margin-bottom: 15px;">
+                            <thead>
+                                <tr><th>Tipo</th><th>Importo (CHF)</th><th>Azioni</th></tr>
+                            </thead>
+                            <tbody id="taxChList"></tbody>
+                        </table>
+                        <button class="add-btn" onclick="addTaxRow('tax-ch')">+ Aggiungi Imposta</button>
+
+                        <div class="total-bar">
+                            Totale Tasse Svizzera: <span id="total-taxes-ch">CHF 800.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RENDICONTI -->
+                <div class="section" id="rendiconto">
+                    <div class="section-title">Rendiconti - Analisi Proprietà Italia</div>
+
+                    <div class="grid">
+                        <div class="card">
+                            <h3>💰 Flusso Annuale</h3>
+                            <div class="metric">
+                                <span class="metric-label">Reddito da affitto</span>
+                                <span class="metric-value" id="annual-rent">€14,400.00</span>
+                            </div>
+                            <div style="border-top: 2px solid #BDD7EE; padding-top: 10px; margin-top: 10px;">
+                                <div style="color: #666; font-size: 12px; margin-bottom: 8px; text-transform: uppercase;">Spese</div>
+                                <div class="metric">
+                                    <span class="metric-label">Mutuo</span>
+                                    <span class="metric-value">-€<span id="exp-mortgage">8,136.00</span></span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">IMU annuale</span>
+                                    <span class="metric-value">-€<span id="exp-imu">1,500.00</span></span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">F24</span>
+                                    <span class="metric-value">-€<span id="exp-f24">2,400.00</span></span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Tasse Svizzera</span>
+                                    <span class="metric-value">-€<span id="exp-tax-ch">766.00</span></span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-label">Spese condominiali</span>
+                                    <span class="metric-value">-€<span id="exp-condo">800.00</span></span>
+                                </div>
+                            </div>
+                            <div style="border-top: 2px solid #BDD7EE; padding-top: 10px; margin-top: 10px;">
+                                <div class="metric" style="border: none;">
+                                    <span class="metric-label" style="font-weight: 600; font-size: 16px;">NETTO ANNUALE</span>
+                                    <span class="metric-value" id="annual-net" style="font-size: 16px; color: #70AD47;">€798.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3>📊 Breakdown Spese (%)</h3>
+                            <div class="chart-container" style="height: 250px;">
+                                <canvas id="expenseBreakdownChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: 20px;">
+                        <h3>Modifica Parametri</h3>
+                        <div class="grid" style="grid-template-columns: 1fr 1fr;">
+                            <div class="label-group">
+                                <label>Reddito affitto mensile (€):</label>
+                                <input type="number" id="sim-rent-monthly" value="1200" step="100" onchange="updateRendiconti()">
+                            </div>
+                            <div class="label-group">
+                                <label>Spese condominiali annuali (€):</label>
+                                <input type="number" id="sim-condo" value="800" step="50" onchange="updateRendiconti()">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const data = {
+            monthlyRecords: [],
+            imuRecords: [{ year: 2025, amount: 1500 }],
+            f24Records: [
+                { date: '2025-03-15', amount: 1200, type: 'Cedolare Secca Rata 1' },
+                { date: '2025-11-15', amount: 1200, type: 'Cedolare Secca Rata 2' }
+            ],
+            taxChRecords: []
+        };
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+
+            const titles = {
+                dashboard: 'Riepilogo Generale',
+                monthly: 'Spese Mensili',
+                investments: 'Investimenti - Dettaglio',
+                forecast: 'Forecast Investimenti',
+                taxes: 'Tasse e Obblighi Fiscali',
+                rendiconto: 'Rendiconti Proprietà'
+            };
+            document.getElementById('pageTitle').textContent = titles[sectionId];
+
+            if (sectionId === 'rendiconto') updateRendiconti();
+        }
+
+        function recalculateAll() {
+            const fxRate = parseFloat(document.getElementById('fx-rate').value) || 0.957;
+            const mortgageMonthly = parseFloat(document.getElementById('mortgage-monthly').value) || 678;
+            const mortgageAnnual = mortgageMonthly * 12;
+            document.getElementById('mortgage-annual').textContent = '€' + mortgageAnnual.toFixed(2);
+
+            const taxChHouse = parseFloat(document.getElementById('tax-ch-house').value) || 800;
+            const taxChHouseEur = taxChHouse / fxRate;
+            document.getElementById('total-taxes-ch-eur').textContent = '€' + taxChHouseEur.toFixed(2);
+
+            renderTaxTotals();
+            updateRendiconti();
+        }
+
+        function updateRendiconti() {
+            const fxRate = parseFloat(document.getElementById('fx-rate').value) || 0.957;
+            const mortgageMonthly = parseFloat(document.getElementById('mortgage-monthly').value) || 678;
+            const mortgageAnnual = mortgageMonthly * 12;
+            const rentMonthly = parseFloat(document.getElementById('sim-rent-monthly').value) || 1200;
+            const annualRent = rentMonthly * 12;
+            const annualCondo = parseFloat(document.getElementById('sim-condo').value) || 800;
+
+            const totalIMU = data.imuRecords.reduce((s, r) => s + (r.amount || 0), 0);
+            const totalF24 = data.f24Records.reduce((s, r) => s + (r.amount || 0), 0);
+            const taxChHouse = parseFloat(document.getElementById('tax-ch-house').value) || 800;
+            const taxChHouseEur = taxChHouse / fxRate;
+
+            const totalExpenses = mortgageAnnual + totalIMU + totalF24 + taxChHouseEur + annualCondo;
+            const netFlow = annualRent - totalExpenses;
+
+            document.getElementById('annual-rent').textContent = '€' + annualRent.toFixed(2);
+            document.getElementById('exp-mortgage').textContent = mortgageAnnual.toFixed(2);
+            document.getElementById('exp-imu').textContent = totalIMU.toFixed(2);
+            document.getElementById('exp-f24').textContent = totalF24.toFixed(2);
+            document.getElementById('exp-tax-ch').textContent = taxChHouseEur.toFixed(2);
+            document.getElementById('exp-condo').textContent = annualCondo.toFixed(2);
+            document.getElementById('annual-net').textContent = (netFlow < 0 ? '-' : '') + '€' + Math.abs(netFlow).toFixed(2);
+            document.getElementById('annual-net').style.color = netFlow >= 0 ? '#70AD47' : '#C5504B';
+
+            updateExpenseBreakdownChart(mortgageAnnual, totalIMU, totalF24, taxChHouseEur, annualCondo);
+        }
+
+        function addMonthlyRow() {
+            data.monthlyRecords.push({ month: '', country: 'Svizzera', income: 0, bills: 0, daily: 0, health: 0, investment: 0 });
+            renderMonthlyTable();
+        }
+
+        function updateMonthlyRow(idx, field, value) {
+            data.monthlyRecords[idx][field] = value;
+            renderMonthlyTable();
+        }
+
+        function deleteMonthlyRow(idx) {
+            data.monthlyRecords.splice(idx, 1);
+            renderMonthlyTable();
+        }
+
+        function renderMonthlyTable() {
+            const tbody = document.getElementById('monthlyList');
+            tbody.innerHTML = '';
+
+            data.monthlyRecords.forEach((row, i) => {
+                const expenses = (row.bills || 0) + (row.daily || 0) + (row.health || 0) + (row.investment || 0);
+                const netFlow = (row.income || 0) - expenses;
+
+                const tr = document.createElement('tr');
+                tr.className = 'input-row';
+                tr.innerHTML = `
+                    <td><input type="month" value="${row.month}" onchange="updateMonthlyRow(${i}, 'month', this.value)"></td>
+                    <td><select onchange="updateMonthlyRow(${i}, 'country', this.value)"><option ${row.country === 'Svizzera' ? 'selected' : ''}>Svizzera</option><option ${row.country === 'Italia' ? 'selected' : ''}>Italia</option></select></td>
+                    <td><input type="number" value="${row.income}" step="0.01" onchange="updateMonthlyRow(${i}, 'income', parseFloat(this.value))"></td>
+                    <td><input type="number" value="${row.bills}" step="0.01" onchange="updateMonthlyRow(${i}, 'bills', parseFloat(this.value))"></td>
+                    <td><input type="number" value="${row.daily}" step="0.01" onchange="updateMonthlyRow(${i}, 'daily', parseFloat(this.value))"></td>
+                    <td><input type="number" value="${row.health}" step="0.01" onchange="updateMonthlyRow(${i}, 'health', parseFloat(this.value))"></td>
+                    <td><input type="number" value="${row.investment}" step="0.01" onchange="updateMonthlyRow(${i}, 'investment', parseFloat(this.value))"></td>
+                    <td style="font-weight: 600;">€${expenses.toFixed(2)}</td>
+                    <td style="color: ${netFlow >= 0 ? '#70AD47' : '#C5504B'}; font-weight: 600;">€${netFlow.toFixed(2)}</td>
+                    <td><button class="delete-btn" onclick="deleteMonthlyRow(${i})">Elimina</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function addTaxRow(type) {
+            if (type === 'imu') {
+                data.imuRecords.push({ year: new Date().getFullYear(), amount: 0 });
+                renderImuTable();
+            } else if (type === 'f24') {
+                data.f24Records.push({ date: '', amount: 0, type: '' });
+                renderF24Table();
+            } else if (type === 'tax-ch') {
+                data.taxChRecords.push({ type: '', amount: 0 });
+                renderTaxChTable();
+            }
+            renderTaxTotals();
+        }
+
+        function updateTaxRow(type, idx, field, value) {
+            const arr = type === 'imu' ? data.imuRecords : type === 'f24' ? data.f24Records : data.taxChRecords;
+            arr[idx][field] = value;
+            if (type === 'imu') renderImuTable();
+            else if (type === 'f24') renderF24Table();
+            else renderTaxChTable();
+            renderTaxTotals();
+            updateRendiconti();
+        }
+
+        function deleteTaxRow(type, idx) {
+            const arr = type === 'imu' ? data.imuRecords : type === 'f24' ? data.f24Records : data.taxChRecords;
+            arr.splice(idx, 1);
+            if (type === 'imu') renderImuTable();
+            else if (type === 'f24') renderF24Table();
+            else renderTaxChTable();
+            renderTaxTotals();
+            updateRendiconti();
+        }
+
+        function renderImuTable() {
+            const tbody = document.getElementById('imuList');
+            tbody.innerHTML = '';
+            data.imuRecords.forEach((row, i) => {
+                const tr = document.createElement('tr');
+                tr.className = 'input-row';
+                tr.innerHTML = `<td><input type="number" value="${row.year}" step="1" onchange="updateTaxRow('imu', ${i}, 'year', parseInt(this.value))"></td><td><input type="number" value="${row.amount}" step="0.01" onchange="updateTaxRow('imu', ${i}, 'amount', parseFloat(this.value))"></td><td><button class="delete-btn" onclick="deleteTaxRow('imu', ${i})">Elimina</button></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderF24Table() {
+            const tbody = document.getElementById('f24List');
+            tbody.innerHTML = '';
+            data.f24Records.forEach((row, i) => {
+                const tr = document.createElement('tr');
+                tr.className = 'input-row';
+                tr.innerHTML = `<td><input type="date" value="${row.date}" onchange="updateTaxRow('f24', ${i}, 'date', this.value)"></td><td><input type="number" value="${row.amount}" step="0.01" onchange="updateTaxRow('f24', ${i}, 'amount', parseFloat(this.value))"></td><td><input type="text" value="${row.type}" onchange="updateTaxRow('f24', ${i}, 'type', this.value)"></td><td><button class="delete-btn" onclick="deleteTaxRow('f24', ${i})">Elimina</button></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderTaxChTable() {
+            const tbody = document.getElementById('taxChList');
+            tbody.innerHTML = '';
+            data.taxChRecords.forEach((row, i) => {
+                const tr = document.createElement('tr');
+                tr.className = 'input-row';
+                tr.innerHTML = `<td><input type="text" value="${row.type}" placeholder="Tipo" onchange="updateTaxRow('tax-ch', ${i}, 'type', this.value)"></td><td><input type="number" value="${row.amount}" step="0.01" onchange="updateTaxRow('tax-ch', ${i}, 'amount', parseFloat(this.value))"></td><td><button class="delete-btn" onclick="deleteTaxRow('tax-ch', ${i})">Elimina</button></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderTaxTotals() {
+            const totalIMU = data.imuRecords.reduce((s, r) => s + (r.amount || 0), 0);
+            const totalF24 = data.f24Records.reduce((s, r) => s + (r.amount || 0), 0);
+            const totalTaxIT = totalIMU + totalF24;
+            const totalTaxCH = data.taxChRecords.reduce((s, r) => s + (r.amount || 0), 0);
+
+            document.getElementById('total-taxes-it').textContent = '€' + totalTaxIT.toFixed(2);
+            document.getElementById('total-taxes-ch').textContent = 'CHF ' + (800 + totalTaxCH).toFixed(2);
+        }
+
+        let expenseChart;
+        function updateExpenseBreakdownChart(mortgage, imu, f24, taxCh, condo) {
+            const ctx = document.getElementById('expenseBreakdownChart');
+            if (!ctx) return;
+
+            if (expenseChart) expenseChart.destroy();
+
+            const total = mortgage + imu + f24 + taxCh + condo;
+            expenseChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Mutuo', 'IMU', 'F24', 'Tasse CH', 'Condominio'],
+                    datasets: [{
+                        data: [mortgage/total*100, imu/total*100, f24/total*100, taxCh/total*100, condo/total*100],
+                        backgroundColor: ['#4472C4', '#70AD47', '#FFD966', '#C5504B', '#FFC000'],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        function exportData() {
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `financial_data_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importDataModal() {
+            const json = prompt('Incolla JSON:');
+            if (json) {
+                try {
+                    Object.assign(data, JSON.parse(json));
+                    renderMonthlyTable();
+                    renderImuTable();
+                    renderF24Table();
+                    renderTaxChTable();
+                    recalculateAll();
+                    alert('Importato!');
+                } catch (e) {
+                    alert('Errore: ' + e.message);
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderMonthlyTable();
+            renderImuTable();
+            renderF24Table();
+            renderTaxChTable();
+            recalculateAll();
+            updateRendiconti();
+        });
+    </script>
+</body>
+</html>
